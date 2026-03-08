@@ -14,6 +14,12 @@ body{font-family:'IBM Plex Mono',monospace;background:#f0eeeb;color:#1e293b;heig
 #header .icon{width:34px;height:34px;background:linear-gradient(135deg,#6d28d9,#2563eb);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff}
 #header h1{font-size:13px;font-weight:700;color:#0f172a;letter-spacing:.06em}
 #header .sub{font-size:9px;color:#94a3b8;letter-spacing:.12em;margin-top:1px}
+#header .nav-links{margin-left:auto;display:flex;align-items:center;gap:6px}
+#header .nav-links a{font-size:10px;color:#94a3b8;text-decoration:none;padding:5px 12px;border-radius:5px;letter-spacing:.06em;font-weight:600;transition:all .15s}
+#header .nav-links a:hover{color:#2563eb;background:#eff6ff}
+#header .nav-links a.active{color:#2563eb;background:#eff6ff}
+#header .nav-links a.logout{color:#ef4444;border:1px solid #fecaca;font-size:9px;padding:4px 10px}
+#header .nav-links a.logout:hover{background:#fef2f2}
 
 /* Tab bar */
 #tabbar{background:#fff;border-bottom:1px solid #e2e0dc;padding:0 16px;display:flex;align-items:center;flex-shrink:0;gap:0}
@@ -185,6 +191,11 @@ body{font-family:'IBM Plex Mono',monospace;background:#f0eeeb;color:#1e293b;heig
   <div>
     <h1>LPG PRICE PARITY ANALYZER</h1>
     <div class="sub">LATVIJAS PROPANA GAZE &middot; RIGA TERMINAL</div>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="active">PRICE PARITY</a>
+    <a href="/calculator">CALCULATOR</a>
+    <a href="/logout" class="logout">LOGOUT</a>
   </div>
 </div>
 
