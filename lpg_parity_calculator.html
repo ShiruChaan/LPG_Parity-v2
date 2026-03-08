@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LPG Logistics Parity Calculator</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'IBM Plex Mono', monospace; background: #0a0e1a; color: #e2e8f0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  #header { background: linear-gradient(90deg,#0f172a,#1e293b); border-bottom: 1px solid #1e3a5f; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  #header .icon { width:34px; height:34px; background:linear-gradient(135deg,#1d4ed8,#0ea5e9); border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:16px; }
+  #header h1 { font-size:14px; font-weight:700; color:#f1f5f9; letter-spacing:.06em; }
+  #header p { font-size:9px; color:#475569; letter-spacing:.14em; margin-top:1px; }
+  #body { display:flex; flex:1; overflow:hidden; }
+  #left { width:240px; background:#0f172a; border-right:1px solid #1e293b; padding:14px 12px; overflow-y:auto; flex-shrink:0; }
+  .section-label { font-size:9px; color:#475569; letter-spacing:.14em; margin-bottom:7px; margin-top:14px; }
+  .section-label:first-child { margin-top:0; }
+  .input-row { margin-bottom:8px; }
+  .input-row label { font-size:10px; color:#64748b; display:block; margin-bottom:3px; }
+  .input-row .row { display:flex; gap:6px; align-items:center; }
+  .input-row input[type=range] { flex:1; accent-color:#3b82f6; }
+  .input-row input[type=number] { width:62px; background:#111827; border:1px solid #374151; color:#f3f4f6; padding:4px 7px; border-radius:4px; font-family:'IBM Plex Mono',monospace; font-size:12px; }
+  .input-row input[type=number]:focus { outline:none; border-color:#3b82f6; }
+  .legend-box { background:#111827; border:1px solid #1e293b; border-radius:5px; padding:9px; margin-top:4px; }
+  .legend-row { display:flex; align-items:center; gap:6px; margin-bottom:4px; font-size:10px; color:#64748b; }
+  .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  #detail-box { margin-top:12px; background:#0d1829; border:1px solid #1e3a5f; border-radius:6px; padding:10px; display:none; }
+  #detail-box .dtitle { font-size:9px; color:#3b82f6; letter-spacing:.08em; font-weight:600; margin-bottom:8px; }
+  .drow { display:flex; justify-content:space-between; margin-bottom:3px; font-size:10px; }
+  .drow .dlabel { color:#475569; }
+  .drow .dval { color:#94a3b8; font-weight:500; }
+  .divider { border-top:1px solid #1e3a5f; margin:6px 0; }
+  #map { flex:1; position:relative; }
+  #right { width:340px; background:#0f172a; border-left:1px solid #1e293b; display:flex; flex-direction:column; flex-shrink:0; }
+  #right-header { padding:10px 13px 7px; border-bottom:1px solid #1e293b; flex-shrink:0; }
+  #right-header span { font-size:9px; color:#475569; letter-spacing:.14em; }
+  #table-head { display:grid; grid-template-columns:1fr 52px 58px 96px; padding:5px 13px; border-bottom:1px solid #1e293b; flex-shrink:0; }
+  #table-head span { font-size:9px; color:#475569; letter-spacing:.07em; }
+  #table-head span:not(:first-child) { text-align:right; }
+  #table-body { overflow-y:auto; flex:1; }
+  .trow { display:grid; grid-template-columns:1fr 52px 58px 96px; padding:7px 13px; border-bottom:1px solid #0d1525; cursor:pointer; transition:background .1s; border-left:2px solid transparent; }
+  .trow:hover { background:#1a2235; }
+  .trow.active { background:#0d1829; border-left-color:#3b82f6; }
+  .trow .cname { font-size:11px; color:#e2e8f0; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .trow .cloc { font-size:9px; color:#475569; }
+  .trow .cval { font-size:11px; text-align:right; align-self:center; }
+  #summary { padding:11px 13px; border-top:1px solid #1e293b; flex-shrink:0; }
+  #summary .slabel { font-size:9px; color:#475569; letter-spacing:.1em; margin-bottom:6px; }
+  .sboxes { display:flex; gap:5px; margin-bottom:7px; }
+  .sbox { flex:1; background:#111827; border-radius:5px; padding:7px 5px; text-align:center; }
+  .sbox .snum { font-size:19px; font-weight:700; line-height:1; }
+  .sbox .slbl { font-size:8.5px; color:#475569; margin-top:2px; }
+  #params-line { font-size:9.5px; color:#374151; line-height:1.7; }
+  #params-line span { color:#60a5fa; }
+  #params-line span.orange { color:#fb923c; }
+  .leaflet-popup-content-wrapper { background:#0d1829; border:1px solid #1e3a5f; border-radius:6px; color:#e2e8f0; font-family:'IBM Plex Mono',monospace; font-size:11px; box-shadow:0 4px 20px #00000080; }
+  .leaflet-popup-tip { background:#0d1829; }
+  .leaflet-popup-content { margin:10px 13px; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="icon">&#9981;</div>
+  <div>
+    <h1>LPG LOGISTICS PARITY CALCULATOR</h1>
+    <p>RIGA TERMINAL &middot; GDA&#321;SK TERMINAL &middot; POLAND CLIENTS</p>
+  </div>
+</div>
+
+
+<div id="legend-bar" style="background:#0d1525;border-bottom:1px solid #1e3a5f;padding:7px 20px;display:flex;align-items:center;gap:24px;flex-shrink:0;flex-wrap:wrap;">
+  <div style="font-size:9px;color:#475569;letter-spacing:.12em;margin-right:4px;">РОЗШИФРОВКА ЦИФР:</div>
+  <div style="display:flex;align-items:center;gap:7px;">
+    <div style="display:flex;align-items:center;gap:4px;">
+      <span style="font-size:13px;font-weight:700;color:#ef4444;font-family:monospace">+12.5</span>
+      <span style="font-size:9px;color:#374151">/</span>
+      <span style="font-size:13px;font-weight:700;color:#22c55e;font-family:monospace">+84.3</span>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:3px;">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <div style="width:10px;height:2px;background:#ef4444;border-radius:1px;flex-shrink:0"></div>
+      <span style="font-size:10px;color:#9ca3af;"><span style="color:#ef4444;font-weight:600;">Перша цифра</span> &mdash; <span style="color:#e2e8f0">Logistics Difference</span> &mdash; наскільки доставка з Риги <span style="color:#e2e8f0">дорожча</span> від Гданська (EUR/т). Від&#39;ємне = Рига дешевша.</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <div style="width:10px;height:2px;background:#22c55e;border-radius:1px;flex-shrink:0"></div>
+      <span style="font-size:10px;color:#9ca3af;"><span style="color:#22c55e;font-weight:600;">Друга цифра</span> &mdash; <span style="color:#e2e8f0">Premium FCA Riga</span> &mdash; мінімальна премія до CIF ARA Large, з якою продаж з Риги рівнозначний Гданську (EUR/т).</span>
+    </div>
+  </div>
+</div>
+<div id="body">
+  <div id="left">
+    <div class="section-label">&#1058;&#1040;&#1056;&#1048;&#1060; &#1055;&#1045;&#1056;&#1045;&#1042;&#1045;&#1047;&#1045;&#1053;&#1053;&#1071;</div>
+    <div class="input-row">
+      <label>EUR / &#1082;&#1084;</label>
+      <div class="row"><input type="range" id="tariff" min="0.1" max="5" step="0.05" value="1.0"><input type="number" id="tariff_n" min="0.1" max="5" step="0.05" value="1.0"></div>
+    </div>
+    <div class="section-label">&#1042;&#1040;&#1053;&#1058;&#1040;&#1046;&#1030;&#1042;&#1050;&#1040;</div>
+    <div class="input-row">
+      <label>&#1058;&#1086;&#1085;&#1085; / &#1084;&#1072;&#1096;&#1080;&#1085;&#1072;</label>
+      <div class="row"><input type="range" id="truck" min="5" max="40" step="1" value="20"><input type="number" id="truck_n" min="5" max="40" step="1" value="20"></div>
+    </div>
+    <div class="section-label">&#1053;&#1040;&#1044;&#1041;&#1040;&#1042;&#1050;&#1040; R&#298;GA (% &#1076;&#1086; &#1090;&#1072;&#1088;&#1080;&#1092;&#1091;)</div>
+    <div class="input-row">
+      <label>&#1058;&#1088;&#1072;&#1085;&#1089;&#1087;&#1086;&#1088;&#1090; &#1076;&#1086; &#1056;&#1080;&#1075;&#1080; &#1076;&#1086;&#1088;&#1086;&#1078;&#1095;&#1080;&#1081; &#1085;&#1072;, %</label>
+      <div class="row"><input type="range" id="rigasurcharge" min="0" max="50" step="1" value="0"><input type="number" id="rigasurcharge_n" min="0" max="50" step="1" value="0"></div>
+    </div>
+    <div class="section-label">&#1050;&#1054;&#1058;&#1048;&#1056;&#1059;&#1042;&#1040;&#1053;&#1053;&#1071; &#1043;&#1044;&#1040;&#1053;&#1057;&#1068;&#1050;</div>
+    <div class="input-row">
+      <label>&#1055;&#1088;&#1077;&#1084;&#1110;&#1103; &#1043;&#1076;&#1072;&#1085;&#1089;&#1100;&#1082;, USD/&#1090;</label>
+      <div class="row"><input type="range" id="premium" min="-500" max="1000" step="5" value="200"><input type="number" id="premium_n" min="-500" max="1000" step="5" value="200"></div>
+    </div>
+    <div class="section-label">&#1050;&#1059;&#1056;&#1057; &#1042;&#1040;&#1051;&#1070;&#1058;</div>
+    <div class="input-row">
+      <label>EUR / USD</label>
+      <div class="row"><input type="range" id="eurusd" min="0.5" max="2" step="0.01" value="1.09"><input type="number" id="eurusd_n" min="0.5" max="2" step="0.01" value="1.09"></div>
+    </div>
+    <div class="section-label">&#1051;&#1045;&#1043;&#1045;&#1053;&#1044;&#1040;</div>
+    <div class="legend-box">
+      <div class="legend-row"><div class="dot" style="background:#22c55e"></div>&#1056;&#1080;&#1075;&#1072; &#1074;&#1080;&#1075;&#1110;&#1076;&#1085;&#1110;&#1096;&#1072;</div>
+      <div class="legend-row"><div class="dot" style="background:#f59e0b"></div>&#1055;&#1072;&#1088;&#1080;&#1090;&#1077;&#1090; (&#177;2 &#8364;/&#1090;)</div>
+      <div class="legend-row"><div class="dot" style="background:#ef4444"></div>&#1043;&#1076;&#1072;&#1085;&#1100;&#1089;&#1100;&#1082; &#1074;&#1080;&#1075;&#1110;&#1076;&#1085;&#1110;&#1096;&#1080;&#1081;</div>
+      <div style="margin-top:6px;font-size:9px;color:#374151;line-height:1.6">&#1053;&#1072; &#1084;&#1072;&#1088;&#1082;&#1077;&#1088;&#1072;&#1093; &#1090;&#1072; &#1074; &#1090;&#1072;&#1073;&#1083;&#1080;&#1094;&#1110;:<br><span style="color:#60a5fa">&#916; &#1076;&#1086;&#1089;&#1090;&#1072;&#1074;&#1082;&#1072;</span> / <span style="color:#a78bfa">Break-even</span> (&#8364;/&#1090;)</div>
+    </div>
+    <div id="detail-box">
+      <div class="dtitle" id="det-title"></div>
+      <div class="drow"><span class="dlabel">&#1050;&#1084; &#1074;&#1110;&#1076; &#1056;&#1080;&#1075;&#1080;</span><span class="dval" id="det-km-r"></span></div>
+      <div class="drow"><span class="dlabel">&#1050;&#1084; &#1074;&#1110;&#1076; &#1043;&#1076;&#1072;&#1085;&#1089;&#1100;&#1082;&#1072;</span><span class="dval" id="det-km-g"></span></div>
+      <div class="divider"></div>
+      <div class="drow"><span class="dlabel">&#1044;&#1086;&#1089;&#1090;&#1072;&#1074;&#1082;&#1072; &#1079; &#1056;&#1080;&#1075;&#1080;</span><span class="dval" style="color:#93c5fd" id="det-del-r"></span></div>
+      <div class="drow"><span class="dlabel">&#1044;&#1086;&#1089;&#1090;&#1072;&#1074;&#1082;&#1072; &#1079; &#1043;&#1076;&#1072;&#1085;&#1089;&#1100;&#1082;&#1072;</span><span class="dval" style="color:#fdba74" id="det-del-g"></span></div>
+      <div class="drow"><span class="dlabel">&#916; (&#1056;&#1080;&#1075;&#1072; &#8722; &#1043;&#1076;&#1072;&#1085;&#1089;&#1100;&#1082;)</span><span class="dval" id="det-delta"></span></div>
+      <div class="divider"></div>
+      <div class="drow"><span class="dlabel">&#1055;&#1088;&#1077;&#1084;. &#1043;&#1076;&#1072;&#1085;&#1089;&#1100;&#1082;, &#8364;/&#1090;</span><span class="dval" id="det-prem-eur"></span></div>
+      <div class="drow"><span class="dlabel">Break-even &#1056;&#1080;&#1075;&#1072;, &#8364;/&#1090;</span><span class="dval" id="det-be"></span></div>
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <div id="right">
+    <div id="right-header"><span>&#1058;&#1040;&#1041;&#1051;&#1048;&#1062;&#1071; &#1055;&#1040;&#1056;&#1048;&#1058;&#1045;&#1058;&#1059;</span></div>
+    <div id="table-head">
+      <span>&#1050;&#1083;&#1110;&#1108;&#1085;&#1090;</span>
+      <span style="text-align:right">&#1056;&#1080;&#1075;&#1072; &#8364;</span>
+      <span style="text-align:right">&#1043;&#1076;&#1072;&#1085;&#1089;&#1100;&#1082; &#8364;</span>
+      <span style="text-align:right">&#916; / B-even &#8364;/&#1090;</span>
+    </div>
+    <div id="table-body"></div>
+    <div id="summary">
+      <div class="slabel">&#1055;&#1030;&#1044;&#1057;&#1059;&#1052;&#1054;&#1050; &middot; &#1051;&#1054;&#1043;&#1030;&#1057;&#1058;&#1048;&#1063;&#1053;&#1048;&#1049; &#1055;&#1040;&#1056;&#1048;&#1058;&#1045;&#1058;</div>
+      <div class="sboxes">
+        <div class="sbox" style="border:1px solid #22c55e33"><div class="snum" style="color:#22c55e" id="s-riga">0</div><div class="slbl">&#1056;&#1080;&#1075;&#1072; &#1074;&#1080;&#1075;&#1110;&#1076;&#1085;&#1110;&#1096;&#1072;</div></div>
+        <div class="sbox" style="border:1px solid #f59e0b33"><div class="snum" style="color:#f59e0b" id="s-par">0</div><div class="slbl">&#1055;&#1072;&#1088;&#1080;&#1090;&#1077;&#1090;</div></div>
+        <div class="sbox" style="border:1px solid #ef444433"><div class="snum" style="color:#ef4444" id="s-gd">0</div><div class="slbl">&#1043;&#1076;&#1072;&#1085;&#1100;&#1089;&#1100;&#1082;</div></div>
+      </div>
+      <div id="params-line"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CLIENTS = [
+  { id:1,  name:"Barter S.A.",       loc:"Bialostok",       distR:500, distG:450, lat:53.132, lng:23.159 },
+  { id:2,  name:"BALTYKGAZ",         loc:"Narewka",         distR:580, distG:470, lat:52.919, lng:23.546 },
+  { id:3,  name:"Transgaz S.A.",     loc:"Malaszewicze",    distR:690, distG:530, lat:52.022, lng:23.647 },
+  { id:4,  name:"BETA PRIM",         loc:"Chelm",           distR:900, distG:588, lat:51.143, lng:23.472 },
+  { id:5,  name:"Polski Gaz S.A.",   loc:"Sosnowiec",       distR:980, distG:540, lat:50.286, lng:19.104 },
+  { id:6,  name:"LUB-GAZ",           loc:"Lublin",          distR:840, distG:520, lat:51.247, lng:22.568 },
+  { id:7,  name:"Saga-Gaz",          loc:"Kutno/Plock",     distR:820, distG:280, lat:52.231, lng:19.365 },
+  { id:8,  name:"PPHU Zmudczynski",  loc:"Ilowo Osada",     distR:650, distG:210, lat:53.262, lng:20.216 },
+  { id:9,  name:"Glob-Terminal",     loc:"Braniewo",        distR:660, distG:100, lat:54.381, lng:19.826 },
+  { id:10, name:"Barter S.A.",       loc:"Krzyz Wlkp.",     distR:970, distG:330, lat:52.878, lng:16.027 },
+  { id:11, name:"Warszawa",          loc:"Warszawa",        distR:680, distG:340, lat:52.237, lng:21.017 },
+  { id:12, name:"PEGAS OIL",         loc:"Lawy/Ostroleka",  distR:563, distG:290, lat:53.083, lng:21.567 },
+];
+const RIGA   = { lat:56.946, lng:24.105 };
+const GDANSK = { lat:54.354, lng:18.672 };
+
+let activeId = null;
+let map, markers = {}, lines = [];
+
+const get = id => parseFloat(document.getElementById(id).value);
+function params() {
+  return {
+    tariff: get('tariff'),
+    truck: get('truck'),
+    rigasurcharge: get('rigasurcharge'),
+    premium: get('premium'),
+    eurusd: get('eurusd')
+  };
+}
+
+function calcClient(c, p) {
+  const rigaTariff = p.tariff * (1 + p.rigasurcharge / 100);
+  const delivR = (c.distR * 2 * rigaTariff) / p.truck;
+  const delivG = (c.distG * 2 * p.tariff) / p.truck;
+  const delta  = delivR - delivG;
+  const premEur = p.premium / p.eurusd;
+  const be = premEur + delivG - delivR;
+  return { delivR, delivG, delta, premEur, be };
+}
+
+function getColor(val) {
+  if (val < -2)  return '#22c55e';
+  if (val <= 2)  return '#f59e0b';
+  return '#ef4444';
+}
+function getBeColor(val) {
+  if (val > 30)   return '#22c55e';
+  if (val >= -30) return '#f59e0b';
+  return '#ef4444';
+}
+
+function fmt(v) { return (v > 0 ? '+' : '') + v.toFixed(1); }
+
+function clientIcon(c, p) {
+  const d = calcClient(c, p);
+  const color   = getColor(d.delta);
+  const beColor = getBeColor(d.be);
+  const isActive = activeId === c.id;
+  const r = isActive ? 9 : 6;
+  const ring = isActive ? '<circle cx="60" cy="28" r="14" fill="none" stroke="' + color + '" stroke-width="1.5" opacity="0.9"/>' : '';
+  const dStr = fmt(d.delta);
+  const bStr = fmt(d.be);
+  const svg = '<svg width="130" height="66" viewBox="0 0 130 66" xmlns="http://www.w3.org/2000/svg">'
+    + '<circle cx="60" cy="28" r="' + (r+6) + '" fill="' + color + '" opacity="0.08"/>'
+    + '<circle cx="60" cy="28" r="' + r + '" fill="' + color + '" opacity="0.85"/>'
+    + ring
+    + '<rect x="1" y="1" width="128" height="17" rx="3" fill="#070b15" opacity="0.92"/>'
+    + '<text x="65" y="14" text-anchor="middle" font-size="10" font-family="monospace" font-weight="700">'
+    + '<tspan fill="' + color + '">' + dStr + '</tspan>'
+    + '<tspan fill="#4b5563"> / </tspan>'
+    + '<tspan fill="' + beColor + '">' + bStr + '</tspan>'
+    + '</text>'
+    + '<text x="65" y="49" text-anchor="middle" fill="#6b7280" font-size="9" font-family="monospace">' + c.name + '</text>'
+    + '<text x="65" y="61" text-anchor="middle" fill="#4b5563" font-size="8" font-family="monospace">' + c.loc + '</text>'
+    + '</svg>';
+  return L.divIcon({ html: svg, iconSize: [130, 66], iconAnchor: [60, 28], className: '' });
+}
+
+function terminalIcon(color, label) {
+  const svg = '<svg width="70" height="36" viewBox="0 0 70 36" xmlns="http://www.w3.org/2000/svg">'
+    + '<rect x="27" y="10" width="16" height="16" fill="' + color + '" opacity="0.9" transform="rotate(45 35 18)"/>'
+    + '<text x="35" y="9" text-anchor="middle" fill="' + color + '" font-size="9" font-family="monospace" font-weight="700">' + label + '</text>'
+    + '</svg>';
+  return L.divIcon({ html: svg, iconSize: [70, 36], iconAnchor: [35, 18], className: '' });
+}
+
+function initMap() {
+  map = L.map('map', { zoomControl: true }).setView([53.2, 20.0], 5);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '(c) OpenStreetMap (c) CARTO', maxZoom: 14
+  }).addTo(map);
+  L.marker([RIGA.lat, RIGA.lng],    { icon: terminalIcon('#38bdf8', 'RIGA') }).addTo(map);
+  L.marker([GDANSK.lat, GDANSK.lng], { icon: terminalIcon('#fb923c', 'GDANSK') }).addTo(map);
+  CLIENTS.forEach(c => {
+    const m = L.marker([c.lat, c.lng], { icon: clientIcon(c, params()) });
+    m.addTo(map);
+    m.on('click', () => selectClient(c.id));
+    markers[c.id] = m;
+  });
+}
+
+function updateMarkers() {
+  const p = params();
+  CLIENTS.forEach(c => markers[c.id].setIcon(clientIcon(c, p)));
+}
+
+function clearLines() {
+  lines.forEach(l => map.removeLayer(l));
+  lines = [];
+}
+
+function drawLines(c) {
+  clearLines();
+  lines.push(L.polyline([[RIGA.lat, RIGA.lng], [c.lat, c.lng]], { color:'#38bdf8', weight:1.8, dashArray:'7,4', opacity:0.7 }).addTo(map));
+  lines.push(L.polyline([[GDANSK.lat, GDANSK.lng], [c.lat, c.lng]], { color:'#fb923c', weight:1.8, dashArray:'7,4', opacity:0.7 }).addTo(map));
+}
+
+function selectClient(id) {
+  if (activeId === id) {
+    activeId = null;
+    clearLines();
+    document.getElementById('detail-box').style.display = 'none';
+    document.querySelectorAll('.trow').forEach(r => r.classList.remove('active'));
+  } else {
+    activeId = id;
+    const c = CLIENTS.find(x => x.id === id);
+    drawLines(c);
+    showDetail(c);
+    document.querySelectorAll('.trow').forEach(r => r.classList.toggle('active', parseInt(r.dataset.id) === id));
+  }
+  updateMarkers();
+}
+
+function showDetail(c) {
+  const p = params();
+  const d = calcClient(c, p);
+  document.getElementById('detail-box').style.display = 'block';
+  document.getElementById('det-title').textContent = c.name + ' / ' + c.loc;
+  document.getElementById('det-km-r').textContent  = c.distR + ' km';
+  document.getElementById('det-km-g').textContent  = c.distG + ' km';
+  document.getElementById('det-del-r').textContent = d.delivR.toFixed(2) + ' EUR/t';
+  document.getElementById('det-del-g').textContent = d.delivG.toFixed(2) + ' EUR/t';
+  const dEl = document.getElementById('det-delta');
+  dEl.textContent = fmt(d.delta) + ' EUR/t';
+  dEl.style.color = getColor(d.delta);
+  document.getElementById('det-prem-eur').textContent = d.premEur.toFixed(2);
+  const beEl = document.getElementById('det-be');
+  beEl.textContent = fmt(d.be);
+  beEl.style.color = getBeColor(d.be);
+}
+
+function updateTable() {
+  const p = params();
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+  let rw = 0, gw = 0, par = 0;
+
+  CLIENTS.forEach((c, idx) => {
+    const d = calcClient(c, p);
+    const color   = getColor(d.delta);
+    const beColor = getBeColor(d.be);
+
+    if (d.delta < -2) rw++;
+    else if (d.delta > 2) gw++;
+    else par++;
+
+    const row = document.createElement('div');
+    row.className = 'trow' + (activeId === c.id ? ' active' : '');
+    row.dataset.id = c.id;
+    row.style.background = idx % 2 === 0 ? '#0f172a' : '#0b1120';
+    row.innerHTML =
+      '<div><div class="cname">' + c.name + '</div><div class="cloc">' + c.loc + '</div></div>'
+      + '<div class="cval" style="color:#93c5fd">' + d.delivR.toFixed(1) + '</div>'
+      + '<div class="cval" style="color:#fdba74">' + d.delivG.toFixed(1) + '</div>'
+      + '<div class="cval" style="font-size:10px">'
+      + '<span style="color:' + color   + ';font-weight:700">' + fmt(d.delta) + '</span>'
+      + '<span style="color:#374151"> / </span>'
+      + '<span style="color:' + beColor + ';font-weight:700">' + fmt(d.be)    + '</span>'
+      + '</div>';
+    row.onclick = () => selectClient(c.id);
+    tbody.appendChild(row);
+  });
+
+  document.getElementById('s-riga').textContent = rw;
+  document.getElementById('s-par').textContent  = par;
+  document.getElementById('s-gd').textContent   = gw;
+
+  document.getElementById('params-line').innerHTML =
+    'Tariff: <span>' + p.tariff + ' EUR/km</span> &middot; Riga surcharge: <span>+' + p.rigasurcharge + '%</span> &middot; Truck: <span>' + p.truck + ' t</span> &middot; EUR/USD: <span>' + p.eurusd + '</span><br>'
+    + 'Gdansk premium: <span class="orange">' + p.premium + ' USD/t</span> = <span class="orange">' + (p.premium / p.eurusd).toFixed(1) + ' EUR/t</span>';
+
+  if (activeId) {
+    const c = CLIENTS.find(x => x.id === activeId);
+    if (c) showDetail(c);
+  }
+}
+
+function syncInputs(rangeId, numberId) {
+  const r = document.getElementById(rangeId);
+  const n = document.getElementById(numberId);
+  r.oninput = () => { n.value = r.value; refresh(); };
+  n.oninput = () => { r.value = n.value; refresh(); };
+}
+
+function refresh() { updateMarkers(); updateTable(); }
+
+syncInputs('tariff',        'tariff_n');
+syncInputs('truck',         'truck_n');
+syncInputs('rigasurcharge', 'rigasurcharge_n');
+syncInputs('premium',       'premium_n');
+syncInputs('eurusd',        'eurusd_n');
+
+initMap();
+updateTable();
+</script>
+</body>
+</html>
